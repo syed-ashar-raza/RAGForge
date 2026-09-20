@@ -1,0 +1,4 @@
+# RAGForge database migrations
+
+Run `alembic upgrade head` to apply the schema.
+Run `alembic revision --autogenerate -m "description"` when the SQLAlchemy models change.

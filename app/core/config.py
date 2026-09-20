@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = 120
     top_k: int = 5
     max_context_chars: int = 12000
+    max_upload_size_mb: int = 10
     similarity_threshold: float = 0.25
 
     upload_dir: Path = Path("./data/documents")
@@ -39,6 +40,8 @@ class Settings(BaseSettings):
             raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
         if self.top_k <= 0:
             raise ValueError("TOP_K must be greater than 0")
+        if self.max_upload_size_mb <= 0:
+            raise ValueError("MAX_UPLOAD_SIZE_MB must be greater than 0")
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
 

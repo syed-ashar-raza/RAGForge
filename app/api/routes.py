@@ -27,7 +27,11 @@ def health(db: Session = Depends(get_db)):
 async def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.filename:
         raise HTTPException(400, "Filename is required")
-    content = await file.read()
+    settings = get_settings()
+    max_upload_bytes = settings.max_upload_size_mb * 1024 * 1024
+    content = await file.read(max_upload_bytes + 1)
+    if len(content) > max_upload_bytes:
+        raise HTTPException(413, "Uploaded file exceeds the configured size limit")
     try:
         doc, duplicate = ingest(db, file.filename, content, file.content_type or "")
     except ValueError as exc:

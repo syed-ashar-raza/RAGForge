@@ -1,0 +1,11 @@
+﻿RAGForge Evaluation Document
+
+Project: RAGForge
+Version: 0.1.0
+
+RAGForge is a local Retrieval-Augmented Generation system.
+Its document ingestion pipeline extracts text, creates overlapping chunks, and generates semantic embeddings.
+The current local runtime stores document and chunk records in SQLite.
+Embeddings are stored as JSON text and semantic similarity is calculated in Python using cosine similarity.
+Ollama is used for local language-model generation.
+The system returns retrieved source metadata with generated answers.
