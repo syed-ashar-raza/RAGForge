@@ -1,500 +1,435 @@
 # RAGForge
 
-> Production-oriented local Retrieval-Augmented Generation (RAG) system built with Python, FastAPI, semantic embeddings, SQLite, Ollama, and Qwen3.
+> Production-oriented local Retrieval-Augmented Generation system built with Python, FastAPI, embeddings, semantic retrieval, grounded generation, and evaluation.
 
-RAGForge is a complete working RAG application that ingests documents, creates semantic embeddings, retrieves relevant context, and generates grounded answers using a locally running LLM.
+RAGForge is an end-to-end Retrieval-Augmented Generation (RAG) system designed to demonstrate the engineering principles required to build reliable document-grounded AI applications.
 
-The project is designed as a practical AI engineering portfolio project demonstrating the core architecture behind modern document-grounded AI systems.
+The system ingests documents, creates overlapping text chunks, generates semantic embeddings, retrieves relevant context, generates grounded answers through a local LLM, and returns source information with the response.
+
+The project focuses on practical AI engineering rather than a simple LLM API wrapper: ingestion, retrieval, grounding, attribution, evaluation, testing, configuration, API design, and reproducible local execution.
 
 ---
 
 ## 🚀 Overview
 
-RAGForge implements an end-to-end local RAG pipeline:
+RAGForge implements the following pipeline:
 
 ```text
                     ┌─────────────────────┐
-                    │       Document      │
-                    │      Upload         │
+                    │     User Query      │
                     └──────────┬──────────┘
                                │
                                ▼
                     ┌─────────────────────┐
-                    │   Document Parser   │
-                    │    PDF / TXT        │
+                    │     FastAPI API     │
                     └──────────┬──────────┘
                                │
                                ▼
                     ┌─────────────────────┐
-                    │      Chunking       │
-                    │  Normalize + Split  │
+                    │       Query         │
                     └──────────┬──────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │     Embeddings      │
-                    │ MiniLM / 384-dim    │
-                    └──────────┬──────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │       SQLite        │
-                    │ Documents + Chunks  │
-                    └──────────┬──────────┘
-                               │
-                         User Query
                                │
                                ▼
                     ┌─────────────────────┐
                     │ Semantic Retrieval  │
-                    │ Cosine Similarity   │
                     └──────────┬──────────┘
                                │
                                ▼
                     ┌─────────────────────┐
-                    │   Grounded Prompt   │
-                    │ Retrieved Context   │
+                    │ Relevant Chunks     │
                     └──────────┬──────────┘
                                │
                                ▼
                     ┌─────────────────────┐
-                    │   Ollama + Qwen3    │
-                    │      4B Local LLM   │
+                    │ Grounded Generation │
+                    │      Ollama         │
                     └──────────┬──────────┘
                                │
                                ▼
                     ┌─────────────────────┐
-                    │ Grounded Answer +   │
-                    │ Source References   │
+                    │ Answer + Sources    │
                     └─────────────────────┘
+
+Document ingestion follows:
+
+PDF / TXT / Markdown
+        │
+        ▼
+   Text Extraction
+        │
+        ▼
+   Text Chunking
+        │
+        ▼
+ Semantic Embeddings
+        │
+        ▼
+ Persistent Storage
 ✨ Key Features
-📄 PDF and TXT document ingestion
-🔍 Semantic vector retrieval
-🧠 Sentence-Transformers embeddings
-🤖 Local LLM generation with Ollama
-⚡ Qwen3 4B local model
-📦 SQLite persistence
-🧩 Configurable chunk size and overlap
-🎯 Configurable retrieval threshold and top-k
-🔐 SHA-256 duplicate-document detection
-📚 Source-aware grounded answers
-🌐 FastAPI REST API
-🧪 Automated pytest test suite
-🔎 Ruff static analysis
-🛡️ Grounded-answer fallback behavior
-🐳 Docker configuration included
-⚙️ Environment-based configuration
-📊 Isolated evaluation suite
-💻 Fully local development workflow
+PDF, TXT, and Markdown document ingestion
+SHA-256 duplicate detection
+Text extraction with pypdf
+Overlapping text chunking
+Semantic embeddings
+Local vector representation
+Cosine-similarity retrieval
+Configurable retrieval threshold
+Configurable top-k retrieval
+Context-size limits
+Grounded LLM generation
+Source attribution
+Explicit unsupported-question abstention
+FastAPI REST API
+SQLite persistence
+Local Ollama inference
+Qwen3:4b development model
+Automated testing
+Evaluation dataset
+Isolated evaluation environment
+Ruff code-quality checks
+Docker support
+Configuration through environment variables
 🧠 RAG Pipeline
 
-RAGForge follows a standard Retrieval-Augmented Generation architecture.
+RAGForge follows a standard retrieval-augmented generation architecture.
 
 1. Document Ingestion
 
-Supported documents are uploaded through the FastAPI API.
-
-Current supported formats:
+Supported document types:
 
 PDF
 TXT
+Markdown
 
-Each document receives a SHA-256 content hash.
+PDF text extraction is performed with pypdf.
 
-If the same document is uploaded again, RAGForge detects the duplicate instead of ingesting it again.
+Documents are processed into normalized text before chunking.
 
-2. Text Parsing
+2. Duplicate Detection
 
-Documents are parsed into normalized text before being processed by the chunking pipeline.
+RAGForge calculates a SHA-256 hash for uploaded documents.
 
-PDF documents are processed with pypdf.
+This allows the system to detect previously indexed documents and avoid unnecessary duplicate ingestion.
 
+Document
+   │
+   ▼
+SHA-256
+   │
+   ├── Existing → Skip
+   │
+   └── New      → Continue ingestion
 3. Chunking
 
-Long documents are divided into smaller overlapping chunks.
+Documents are divided into overlapping chunks.
 
-Default configuration:
+Current configuration:
 
-Chunk size:     800 characters
-Chunk overlap:  120 characters
+Chunk size:       800 characters
+Chunk overlap:    120 characters
 
-Chunking allows retrieval to operate on focused sections of documents instead of entire files.
+The overlap helps preserve context across chunk boundaries.
 
 4. Embeddings
 
-RAGForge converts each chunk into a dense semantic vector using:
+RAGForge uses:
 
 sentence-transformers/all-MiniLM-L6-v2
 
-Embedding dimension:
+The embedding dimension is:
 
 384
 
-These vectors allow semantic similarity comparison between user queries and document chunks.
+Embeddings represent document chunks in semantic vector space.
 
 5. Retrieval
 
-When a user submits a question:
+For a user query, RAGForge:
 
-The query is embedded.
-Stored chunk embeddings are loaded.
-Cosine similarity is calculated.
-Results below the configured similarity threshold are removed.
-The highest-scoring chunks are selected.
-The selected context is passed to the generation layer.
+User Query
+    │
+    ▼
+Query Embedding
+    │
+    ▼
+Cosine Similarity
+    │
+    ▼
+Ranked Chunks
+    │
+    ▼
+Top-k Context
 
-Default retrieval configuration:
+Current retrieval configuration:
 
-Top K:                 5
+Top-k:                 5
 Similarity threshold:  0.25
 Maximum context:       12000 characters
-6. Grounded Generation
 
-Retrieved document context is passed to the local LLM through a grounded prompt.
+Semantic similarity is calculated using cosine similarity.
 
-RAGForge instructs the model to answer using the supplied context.
+🤖 Grounded Generation
 
-If the retrieved documents do not contain enough information, the system is designed to explicitly communicate that limitation rather than pretending unsupported information is present.
+Retrieved context is passed to the local language model with an explicit grounding instruction:
 
-🤖 Local LLM
+Use ONLY the supplied context.
+Do not invent facts.
+If the answer is not contained in the context,
+clearly state that the indexed documents do not
+contain enough information.
 
-RAGForge uses Ollama for local LLM inference.
+This creates a deliberate separation:
 
-Current model:
+Retrieval
+    ↓
+Evidence
+    ↓
+Grounded Generation
+    ↓
+Answer + Sources
 
-qwen3:4b
+The system is designed to reduce unsupported generation by requiring the model to answer from retrieved evidence.
 
-The application communicates with the local Ollama HTTP API.
+🛑 Unsupported Questions and Abstention
 
-Default endpoint:
+RAGForge explicitly handles questions that are not supported by the indexed evidence.
 
-http://localhost:11434
-
-This architecture keeps the generation layer local and avoids requiring a hosted LLM API for development.
-
-🛠️ Tech Stack
-Layer	Technology
-Language	Python 3.14+
-API	FastAPI
-Server	Uvicorn
-Validation	Pydantic
-Configuration	pydantic-settings
-Database	SQLite
-ORM	SQLAlchemy
-PDF Processing	pypdf
-Embeddings	Sentence-Transformers
-Embedding Model	all-MiniLM-L6-v2
-LLM Runtime	Ollama
-LLM	Qwen3 4B
-Testing	pytest
-Static Analysis	Ruff
-Containerization	Docker
-Version Control	Git
-📁 Project Structure
-RAGForge/
-│
-├── app/
-│   ├── api/
-│   │   └── routes.py
-│   │
-│   ├── core/
-│   │   └── config.py
-│   │
-│   ├── db/
-│   │   ├── database.py
-│   │   ├── init_db.py
-│   │   └── models.py
-│   │
-│   ├── ingestion/
-│   │   ├── chunker.py
-│   │   └── parsers.py
-│   │
-│   ├── rag/
-│   │   ├── embeddings.py
-│   │   ├── generator.py
-│   │   └── retriever.py
-│   │
-│   ├── services/
-│   │   └── documents.py
-│   │
-│   └── main.py
-│
-├── data/
-│   └── documents/
-│
-├── docs/
-│
-├── evals/
-│
-├── scripts/
-│
-├── tests/
-│
-├── .dockerignore
-├── .env.example
-├── .gitignore
-├── Dockerfile
-├── docker-compose.yml
-├── pyproject.toml
-└── README.md
-🌐 API
-
-Base API prefix:
-
-/api/v1
-Health Check
-GET /api/v1/health
+For unsupported questions, the expected behavior is to abstain rather than fabricate an answer.
 
 Example:
 
-{
-  "status": "ok"
-}
-Upload Document
-POST /api/v1/documents
+Question:
+What database does RAGForge use for production user authentication?
 
-Upload a PDF or TXT document.
+Result:
+The indexed documents do not contain enough information
+to answer the question.
 
-The ingestion pipeline:
+This behavior is tested separately from retrieval quality.
 
-Upload
-  ↓
-Hash
-  ↓
-Duplicate Check
-  ↓
-Parse
-  ↓
-Chunk
-  ↓
-Embed
-  ↓
-Persist
-Query
-POST /api/v1/query
+An unsupported question is not automatically treated as a retrieval failure because a semantically similar chunk can still be retrieved while the correct answer is that the available evidence is insufficient.
 
-The query endpoint performs:
+🔬 Evaluation
 
-User Question
-      ↓
-Query Embedding
-      ↓
-Semantic Retrieval
-      ↓
-Context Selection
-      ↓
-Grounded Prompt
-      ↓
-Ollama / Qwen3
-      ↓
-Answer + Sources
-🔬 Verified End-to-End Flow
+RAGForge includes a dedicated evaluation suite under:
 
-RAGForge has been tested through the actual application pipeline.
+evals/
 
-Verified flow:
+The evaluation corpus is isolated from the normal application database using a temporary SQLite database.
 
-Document Upload
-      ↓
-Document Parsing
-      ↓
-Chunk Creation
-      ↓
-Embedding Generation
-      ↓
-SQLite Persistence
-      ↓
-Semantic Retrieval
-      ↓
-Ollama HTTP API
-      ↓
-Qwen3 4B
-      ↓
-Grounded Response
-      ↓
-Source Metadata
+This prevents unrelated application data from influencing evaluation results.
 
-The end-to-end query path has been manually verified to retrieve relevant indexed content and generate a grounded response through the local Qwen3 model.
+Evaluation Coverage
+
+The current dataset contains:
+
+4 supported questions
+1 unsupported question
+
+The supported questions test:
+
+System description
+Storage architecture
+Similarity calculation
+Local LLM runtime
+
+The unsupported question tests abstention behavior.
+
+Verified Evaluation Results
+Retrieval evaluation:        4/4 passed
+Answer evidence evaluation:  4/4 passed
+Abstention evaluation:       1/1 passed
+
+The evaluation therefore provides separate evidence for:
+
+Retrieval
+   ↓
+Answer Evidence
+   ↓
+Abstention
+Evaluation Design
+
+The evaluation runner:
+
+Loads the evaluation dataset
+Uses an isolated temporary SQLite database
+Ingests only the evaluation corpus
+Evaluates supported retrieval cases
+Checks generated/fallback answer evidence
+Tests deterministic abstention behavior
+Returns a non-zero exit code when the required evaluation checks fail
+⚠️ Evaluation Runtime Note
+
+The latest fast evaluation run was performed while the local Ollama service was offline.
+
+In that run, the generator correctly used RAGForge's deterministic fallback behavior based on retrieved context.
+
+Therefore:
+
+Retrieval evaluation       → exercised
+Answer evidence evaluation → exercised against fallback output
+Abstention evaluation      → deterministic test
+Live Ollama generation     → not exercised in that specific run
+
+Earlier manual verification with Ollama/Qwen3:4b demonstrated the grounded generation and unsupported-question abstention behavior.
+
+This distinction is intentional: evaluation results are reported according to what was actually executed rather than being presented as a live LLM benchmark when the model service was unavailable.
 
 🧪 Testing
 
-Run the complete test suite:
+Run the automated test suite:
 
-python -m pytest -q
+pytest -q
 
-Current verified result:
+The project has verified automated coverage for the implemented RAG pipeline and application components.
 
-6 passed
+The current repository test suite includes:
+
+6 tests passed
+
+The evaluation suite is separate from the normal unit/integration test suite.
+
 🔍 Code Quality
 
-Ruff is used for static analysis.
+RAGForge uses Ruff for static analysis.
 
 Run:
 
 ruff check .
 
-Compile validation:
+Python compilation can be verified with:
 
-python -m compileall app
+python -m compileall -q app evals
 
-The project has been verified with:
+The project uses a quality-oriented workflow:
 
-Compile:  PASSED
-Ruff:     PASSED
-Pytest:   PASSED
+Code
+ ↓
+Static Analysis
+ ↓
+Compilation
+ ↓
+Automated Tests
+ ↓
+Evaluation
+🛠️ Tech Stack
+Technology	Purpose
+Python	Core application
+FastAPI	REST API
+Pydantic	Configuration and validation
+SQLite	Local persistence
+sentence-transformers	Semantic embeddings
+all-MiniLM-L6-v2	Embedding model
+NumPy	Vector operations
+pypdf	PDF text extraction
+Ollama	Local LLM inference
+Qwen3:4b	Local development model
+pytest	Automated testing
+Ruff	Static analysis
+Docker	Containerized execution
+GitHub Actions	CI
+📁 Project Structure
+RAGForge/
+│
+├── app/
+│   ├── api/
+│   ├── core/
+│   ├── db/
+│   ├── models/
+│   ├── rag/
+│   └── services/
+│
+├── evals/
+│   ├── dataset.jsonl
+│   ├── evaluation_document.txt
+│   └── run.py
+│
+├── tests/
+│
+├── Dockerfile
+├── docker-compose.yml
+├── pyproject.toml
+├── .env.example
+└── README.md
+🌐 API
 
-Quality gate:
+The application exposes a versioned API under:
 
-RAGFORGE QUALITY GATE: PASSED
-📊 Evaluation
+/api/v1
 
-RAGForge includes an isolated evaluation suite covering retrieval, answer evidence, and unsupported-question abstention.
+Core functionality includes:
 
-The evaluation corpus is loaded into a temporary SQLite database so the evaluation does not depend on the application's persistent development data.
+Health
+GET /api/v1/health
+Document Upload
+POST /api/v1/documents/upload
+Query
+POST /api/v1/query
 
-Verified Evaluation Results
-Retrieval evaluation:       4/4 passed
-Answer evidence evaluation: 4/4 passed
-Abstention evaluation:      1/1 passed
+The query response contains the generated answer together with retrieved source metadata.
 
-The evaluation dataset contains four supported factual cases and one unsupported-question case.
-
-The supported cases verify that retrieved context contains the expected source evidence and that generated or fallback answers contain the expected answer terms.
-
-The unsupported case is evaluated separately as an abstention test. It is intentionally not counted as a retrieval failure because semantic retrieval can return related context even when the requested information is absent.
-
-The fast evaluation suite does not require the Ollama service for every run. When Ollama is unavailable, RAGForge's grounded fallback behavior is exercised instead.
-
-The latest fast evaluation run therefore verifies retrieval, answer evidence against the available generator output, and deterministic abstention behavior. It should not be interpreted as a live LLM generation benchmark when Ollama is offline.
-
-Run the evaluation suite with:
-
-python evals/run.py
-📦 Installation
-
-Clone the repository and enter the project:
-
-git clone https://github.com/syed-ashar-raza/RAGForge.git
-cd RAGForge
-
-Create a virtual environment:
-
-python -m venv .venv
-
-Activate it:
-
-.\.venv\Scripts\Activate.ps1
-
-Install the project:
-
-python -m pip install -e ".[dev]"
-🤖 Install Ollama
-
-Install Ollama separately and make sure the local service is running.
-
-Then pull the configured model:
-
-ollama pull qwen3:4b
-
-Verify:
-
-ollama list
-
-The application expects Ollama at:
-
-http://localhost:11434
 ⚙️ Configuration
 
 RAGForge uses environment-based configuration.
 
-Copy:
+Important settings include:
 
-.env.example
+DATABASE_URL
+OLLAMA_BASE_URL
+OLLAMA_MODEL
+EMBEDDING_MODEL
+CHUNK_SIZE
+CHUNK_OVERLAP
+TOP_K
+SIMILARITY_THRESHOLD
+MAX_CONTEXT_CHARS
 
-to:
+Current local defaults include:
 
-.env
+Embedding model:
+sentence-transformers/all-MiniLM-L6-v2
 
-Example configuration:
+LLM:
+qwen3:4b
 
-DATABASE_URL=sqlite:///./data/ragforge.db
+Chunk size:
+800
 
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen3:4b
+Chunk overlap:
+120
 
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-EMBEDDING_DIMENSION=384
+Top-k:
+5
 
-CHUNK_SIZE=800
-CHUNK_OVERLAP=120
+Similarity threshold:
+0.25
 
-TOP_K=5
-MAX_CONTEXT_CHARS=12000
-SIMILARITY_THRESHOLD=0.25
-
-UPLOAD_DIR=./data/documents
-▶️ Run the Application
-
-Start the FastAPI server:
-
-uvicorn app.main:app --reload
-
-The API will be available locally through the configured Uvicorn server.
-
-FastAPI automatically exposes interactive API documentation.
-
-🔐 Duplicate Detection
-
-RAGForge calculates a SHA-256 hash for uploaded documents.
-
-Example workflow:
-
-Document A
-   ↓
-SHA-256
-   ↓
-Hash stored
-
-Document A uploaded again
-   ↓
-SHA-256
-   ↓
-Existing hash detected
-   ↓
-Duplicate response
-
-This prevents unnecessary repeated ingestion of identical documents.
-
+Maximum context:
+12000 characters
 🗄️ Data Model
 
-RAGForge currently uses two main database entities:
+The local application stores document and chunk information in SQLite.
+
+Conceptually:
 
 Document
+   │
+   ├── Metadata
+   ├── SHA-256 hash
+   │
+   └── Chunks
+          │
+          ├── Text
+          └── Embedding
 
-Stores document-level metadata including:
+The current local runtime stores embeddings as JSON text and performs semantic similarity calculations in Python using cosine similarity.
 
-document ID
-filename
-content hash
-upload timestamp
-metadata
-Chunk
+This is intentionally simple and transparent for the local implementation.
 
-Stores chunk-level information including:
+🧭 Engineering Decisions
+Local-First Architecture
 
-chunk ID
-document relationship
-chunk text
-embedding
-source locator
-timestamps
-
-Embeddings are currently persisted as JSON text for the local SQLite implementation.
-
-🏗️ Engineering Decisions
-Local-first architecture
-
-The project intentionally uses local infrastructure for development:
+The current implementation is designed to run locally using:
 
 FastAPI
 +
@@ -503,132 +438,229 @@ SQLite
 Sentence Transformers
 +
 Ollama
-+
-Qwen3
 
-This provides a reproducible development environment without requiring paid hosted inference APIs.
+This provides a reproducible development environment without requiring a hosted vector database or hosted LLM API.
 
-SQLite Runtime
+Explicit Retrieval Controls
 
-SQLite was selected for the current local runtime because it provides:
+Retrieval uses configurable:
 
-zero configuration
-fast local development
-easy portability
-simple persistence
-minimal infrastructure overhead
+top_k
+similarity_threshold
+max_context_chars
 
-The codebase also includes PostgreSQL/pgvector-related dependencies and Docker configuration for future deployment-oriented evolution.
+These controls make retrieval behavior explicit rather than relying on hidden defaults.
 
-Separate RAG Components
+Grounded Generation
 
-The application separates major responsibilities:
+The generator receives retrieved context explicitly and is instructed not to invent information outside that context.
 
-Ingestion
-    ↓
-Chunking
-    ↓
-Embeddings
-    ↓
-Retrieval
-    ↓
+This establishes a clear boundary between:
+
+Evidence
+   ↓
 Generation
-    ↓
-API
+Separate Evaluation Environment
 
-This makes individual components easier to test, replace, and evolve.
+The evaluation runner uses a temporary database and dedicated evaluation corpus.
+
+This reduces contamination from unrelated application data and makes the evaluation workflow more reproducible.
+
+Abstention as a Separate Behavior
+
+The project treats unsupported questions differently from retrieval failures.
+
+A semantically similar chunk may still be retrieved for an unsupported question.
+
+Therefore, the evaluation checks whether the final answer appropriately recognizes insufficient evidence instead of requiring the retriever itself to reject the query.
 
 🐳 Docker
 
-Docker configuration is included for future containerized deployment.
+RAGForge includes Docker support for reproducible local execution.
 
-Files:
+Build and run using the provided Docker configuration:
 
-Dockerfile
-docker-compose.yml
-.dockerignore
+docker compose up --build
 
-The current development workflow is optimized for local Windows execution.
+The application can then be accessed through the configured FastAPI service.
 
-🔄 Future Production Extensions
+📦 Installation
+1. Clone the Repository
+git clone https://github.com/syed-ashar-raza/RAGForge.git
+cd RAGForge
+2. Create a Virtual Environment
+python -m venv .venv
+3. Activate the Environment
+
+Windows PowerShell:
+
+.venv\Scripts\Activate.ps1
+
+Linux/macOS:
+
+source .venv/bin/activate
+4. Install Dependencies
+pip install -e .
+5. Configure Environment
+
+Windows PowerShell:
+
+Copy-Item .env.example .env
+
+Review the environment configuration before running the application.
+
+🤖 Ollama Setup
+
+RAGForge uses Ollama for local language-model generation.
+
+The verified development model is:
+
+qwen3:4b
+
+Make sure Ollama is installed and running before using live generation.
+
+The application communicates with the local Ollama service.
+
+▶️ Run the Application
+
+Start the FastAPI server:
+
+uvicorn app.main:app --reload
+
+The local application is available at:
+
+http://127.0.0.1:8000
+
+FastAPI documentation:
+
+http://127.0.0.1:8000/docs
+🔄 Verified End-to-End Flow
+
+The implementation has been manually verified through the complete local RAG workflow:
+
+Document
+   ↓
+Ingestion
+   ↓
+Text Extraction
+   ↓
+Chunking
+   ↓
+Embedding
+   ↓
+Storage
+   ↓
+Query Embedding
+   ↓
+Semantic Retrieval
+   ↓
+Context Construction
+   ↓
+Ollama / Qwen3:4b
+   ↓
+Grounded Answer
+   ↓
+Source Attribution
+
+The system has also been verified for unsupported questions, where the grounded generation behavior recognizes insufficient evidence rather than fabricating an answer.
+
+📊 Current Project Status
+
+Status: MVP complete
+
+Implemented capabilities:
+
+Document ingestion
+PDF/TXT/Markdown processing
+Duplicate detection
+Chunking with overlap
+Semantic embeddings
+Semantic retrieval
+Grounded generation
+Source attribution
+Unsupported-question abstention
+FastAPI API
+SQLite persistence
+Local Ollama inference
+Automated testing
+Evaluation suite
+Static analysis
+Docker support
+CI configuration
+
+Current verified evidence includes:
+
+6 automated tests passed
+4/4 retrieval evaluation
+4/4 answer evidence evaluation
+1/1 abstention evaluation
+Local RAG pipeline verification
+Ollama/Qwen3:4b verification
+Source attribution
+Unsupported-question handling
+🎯 What This Project Demonstrates
+
+RAGForge demonstrates practical AI engineering across multiple layers:
+
+Python
+   ↓
+Backend Engineering
+   ↓
+FastAPI
+   ↓
+Document Processing
+   ↓
+Embeddings
+   ↓
+Semantic Retrieval
+   ↓
+RAG
+   ↓
+LLM Integration
+   ↓
+Grounded Generation
+   ↓
+Source Attribution
+   ↓
+Evaluation
+   ↓
+Testing
+   ↓
+Docker / CI
+
+The project demonstrates more than simply connecting an LLM to a prompt.
+
+It implements the major components required to build a document-grounded AI application:
+
+Ingest
+  ↓
+Represent
+  ↓
+Retrieve
+  ↓
+Ground
+  ↓
+Generate
+  ↓
+Evaluate
+🔮 Future Production Extensions
 
 Potential future improvements include:
 
-PostgreSQL + pgvector production deployment
-Hybrid keyword + semantic retrieval
-Cross-encoder reranking
-Streaming LLM responses
-Background document ingestion
+PostgreSQL + pgvector at larger scale
+Dedicated vector database infrastructure
+Hybrid lexical + semantic retrieval
+Reranking
+Advanced retrieval evaluation
+Distributed ingestion workers
+Background processing
 Authentication and authorization
-Rate limiting
-Observability and tracing
-Structured evaluation datasets
-Retrieval metrics
-Answer-quality metrics
-Document versioning
-Multi-user isolation
-Cloud deployment
-CI/CD pipeline
-Production monitoring
-More advanced chunking strategies
-Metadata filtering
-Conversation-aware retrieval
+Advanced observability
+Hosted model providers
+GPU inference
+Production deployment infrastructure
 
-These are planned extensions rather than claims about the current implementation.
-
-📈 Current Project Status
-
-RAGForge currently represents a working local RAG MVP with:
-
-document ingestion
-PDF/TXT parsing
-chunking
-semantic embeddings
-persistent storage
-semantic retrieval
-local LLM generation
-grounded prompting
-duplicate detection
-FastAPI endpoints
-automated tests
-static analysis
-evaluation coverage
-Docker configuration
-Git/GitHub version control
-
-The project has been tested through the complete local RAG workflow.
-
-🎯 What This Project Demonstrates
-
-RAGForge demonstrates practical AI engineering skills across multiple layers:
-
-Python
-  ↓
-Software Architecture
-  ↓
-FastAPI
-  ↓
-Data Persistence
-  ↓
-Document Processing
-  ↓
-Embeddings
-  ↓
-Vector Retrieval
-  ↓
-LLM Integration
-  ↓
-RAG Architecture
-  ↓
-Evaluation
-  ↓
-Testing
-  ↓
-Code Quality
-  ↓
-Git/GitHub
-
-Rather than being only an LLM API wrapper, RAGForge implements the complete retrieval pipeline required for a functional document-grounded AI application.
+These are future extensions and are not presented as current implementation capabilities.
 
 👨‍💻 Author
 
@@ -639,19 +671,19 @@ AI Engineer | Machine Learning | Generative AI | LLMs | RAG | AI Agents
 Building practical AI systems focused on:
 
 AI Engineering
-RAG Systems
-LLM Applications
-Generative AI
 Machine Learning
-Python
-Backend Development
+Generative AI
+LLM Applications
+Retrieval-Augmented Generation
+Agentic AI
 Production AI Systems
+Python
+Backend Engineering
+Reliable AI Infrastructure
 📄 License
 
-This project is currently intended as a portfolio and educational engineering project.
-
-See the repository for the latest project status and licensing information.
+Apache-2.0
 
 ⭐ Project
 
-If you find the project useful or interesting, consider giving the repository a ⭐ on GitHub.
+If you find RAGForge useful or interesting, consider giving the repository a ⭐ on GitHub.
