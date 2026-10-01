@@ -1,4 +1,5 @@
-{"id":"q1","question":"What kind of system is RAGForge?","expected_source":"evaluation_document.txt","expected_terms":["local Retrieval-Augmented Generation system"]}
-{"id":"q2","question":"Where does the current local runtime store document and chunk records?","expected_source":"evaluation_document.txt","expected_terms":["SQLite"]}
-{"id":"q3","question":"How is semantic similarity calculated in the current local runtime?","expected_source":"evaluation_document.txt","expected_terms":["cosine similarity","Python"]}
-{"id":"q4","question":"Which local language model runtime is used for generation?","expected_source":"evaluation_document.txt","expected_terms":["Ollama"]}
+{"id":"q1","question":"What kind of system is RAGForge?","expected_source":"evaluation_document.txt","expected_terms":["local Retrieval-Augmented Generation system"],"expected_answer_terms":["local Retrieval-Augmented Generation system"]}
+{"id":"q2","question":"Where does the current local runtime store document and chunk records?","expected_source":"evaluation_document.txt","expected_terms":["SQLite"],"expected_answer_terms":["SQLite"]}
+{"id":"q3","question":"How is semantic similarity calculated in the current local runtime?","expected_source":"evaluation_document.txt","expected_terms":["cosine similarity","Python"],"expected_answer_terms":["cosine similarity","Python"]}
+{"id":"q4","question":"Which local language model runtime is used for generation?","expected_source":"evaluation_document.txt","expected_terms":["Ollama"],"expected_answer_terms":["Ollama"]}
+{"id":"q5","question":"What database does RAGForge use for production user authentication?","expected_source":null,"expected_terms":[],"expected_answer_terms":["do not contain enough information","not enough information","could not find relevant information"]}
