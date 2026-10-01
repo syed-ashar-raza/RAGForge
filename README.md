@@ -84,7 +84,7 @@ RAGForge implements an end-to-end local RAG pipeline:
 🛡️ Grounded-answer fallback behavior
 🐳 Docker configuration included
 ⚙️ Environment-based configuration
-📊 Evaluation structure included
+📊 Isolated evaluation suite
 💻 Fully local development workflow
 🧠 RAG Pipeline
 
@@ -314,7 +314,7 @@ Grounded Response
       ↓
 Source Metadata
 
-The end-to-end query path successfully retrieved relevant indexed content and generated a grounded response through the local Qwen3 model.
+The end-to-end query path has been manually verified to retrieve relevant indexed content and generate a grounded response through the local Qwen3 model.
 
 🧪 Testing
 
@@ -346,6 +346,30 @@ Pytest:   PASSED
 Quality gate:
 
 RAGFORGE QUALITY GATE: PASSED
+📊 Evaluation
+
+RAGForge includes an isolated evaluation suite covering retrieval, answer evidence, and unsupported-question abstention.
+
+The evaluation corpus is loaded into a temporary SQLite database so the evaluation does not depend on the application's persistent development data.
+
+Verified Evaluation Results
+Retrieval evaluation:       4/4 passed
+Answer evidence evaluation: 4/4 passed
+Abstention evaluation:      1/1 passed
+
+The evaluation dataset contains four supported factual cases and one unsupported-question case.
+
+The supported cases verify that retrieved context contains the expected source evidence and that generated or fallback answers contain the expected answer terms.
+
+The unsupported case is evaluated separately as an abstention test. It is intentionally not counted as a retrieval failure because semantic retrieval can return related context even when the requested information is absent.
+
+The fast evaluation suite does not require the Ollama service for every run. When Ollama is unavailable, RAGForge's grounded fallback behavior is exercised instead.
+
+The latest fast evaluation run therefore verifies retrieval, answer evidence against the available generator output, and deterministic abstention behavior. It should not be interpreted as a live LLM generation benchmark when Ollama is offline.
+
+Run the evaluation suite with:
+
+python evals/run.py
 📦 Installation
 
 Clone the repository and enter the project:
@@ -514,32 +538,6 @@ API
 
 This makes individual components easier to test, replace, and evolve.
 
-📊 Evaluation
-
-The repository includes an evaluation area for measuring RAG behavior and documenting future evaluation improvements.
-
-Important evaluation dimensions for a production RAG system include:
-
-Retrieval Quality
-
-Does the retriever return the correct document chunks?
-
-Groundedness
-
-Does the generated answer remain supported by retrieved context?
-
-Relevance
-
-Does the response actually address the user's question?
-
-Failure Handling
-
-Does the system correctly indicate when the indexed documents do not contain enough information?
-
-Latency
-
-How long does the system take from query submission to generated response?
-
 🐳 Docker
 
 Docker configuration is included for future containerized deployment.
@@ -594,6 +592,7 @@ duplicate detection
 FastAPI endpoints
 automated tests
 static analysis
+evaluation coverage
 Docker configuration
 Git/GitHub version control
 
@@ -621,6 +620,8 @@ LLM Integration
   ↓
 RAG Architecture
   ↓
+Evaluation
+  ↓
 Testing
   ↓
 Code Quality
@@ -633,16 +634,18 @@ Rather than being only an LLM API wrapper, RAGForge implements the complete retr
 
 Syed Ashar Raza
 
-BSAI Student | AI Developer | Python Developer
+AI Engineer | Machine Learning | Generative AI | LLMs | RAG | AI Agents
 
 Building practical AI systems focused on:
 
 AI Engineering
 RAG Systems
 LLM Applications
+Generative AI
+Machine Learning
 Python
 Backend Development
-Applied Machine Learning
+Production AI Systems
 📄 License
 
 This project is currently intended as a portfolio and educational engineering project.
@@ -652,13 +655,3 @@ See the repository for the latest project status and licensing information.
 ⭐ Project
 
 If you find the project useful or interesting, consider giving the repository a ⭐ on GitHub.
-
-
-### After pasting
-
-Run these **three commands**:
-
-```powershell
-git add README.md
-git commit -m "docs: improve RAGForge portfolio presentation"
-git push origin main
